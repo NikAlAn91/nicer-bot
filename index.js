@@ -1,4 +1,5 @@
-import { Bot } from "grammy";
+import { Bot, webhookCallback } from "grammy";
+import express from "express";
 
 const bot = new Bot(process.env.BOT_TOKEN);
 
@@ -17,10 +18,26 @@ bot.on("message", async (ctx) => {
     await ctx.react(
       REACTIONS[Math.floor(Math.random() * REACTIONS.length)]
     );
-  } catch (e) {
-    // silently ignore rate limits / permission errors
-  }
+  } catch {}
 });
 
-bot.start();
-console.log("Siggy Plut reaction bot is running 🔥");
+// --------------------
+// WEBHOOK SERVER
+// --------------------
+const app = express();
+app.use(express.json());
+
+app.post("/webhook", webhookCallback(bot, "express"));
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, async () => {
+  const WEBHOOK_URL = `${process.env.RENDER_EXTERNAL_URL}/webhook`;
+
+  // 🔥 Clean old webhooks & set new one
+  await bot.api.deleteWebhook({ drop_pending_updates: true });
+  await bot.api.setWebhook(WEBHOOK_URL);
+
+  console.log("Siggy Plut webhook bot is running 🔥");
+  console.log("Webhook set to:", WEBHOOK_URL);
+});
